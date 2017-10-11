@@ -16,6 +16,27 @@ enum TestOutcome {
     DumpJSConsoleLogInStdErr,
 }
 
+function testOutcomeToLetter(outcome: TestOutcome | null): string {
+    switch (outcome) {
+        case TestOutcome.Pass:
+            return "P";
+        case TestOutcome.Failure:
+            return "F";
+        case TestOutcome.Crash:
+            return "C";
+        case TestOutcome.Timeout:
+            return "T";
+        case TestOutcome.ImageOnlyFailure:
+            return "I";
+        case TestOutcome.Slow:
+            return "S";
+        case null:
+            return " ";
+        default:
+            throw new Error(`Unexpected outcome: ${TestOutcome[outcome]} (${outcome})`);
+    }
+}
+
 enum BuildType {
     Debug,
     Release
@@ -303,6 +324,12 @@ class TestHistory {
            return new TestExpectation(-1, this.testPath, [], new Set([TestOutcome.Pass]), null);
        }
     }
+
+    historyString() {
+        return this.lastResults
+            .map(result => testOutcomeToLetter(result.outcome))
+            .join("");
+    }
 }
 
 function getReleaseJsonPlatformName(releaseJson: ReleaseJson) {
@@ -415,7 +442,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
     for (let testHistory of testHistoriesWithInvalidExpectations) {
         const expectation = testHistory.getExpectationWithDefault();
         const outcome = testHistory.lastResults.find(r => r.webkitRevision == latestRevision)!.outcome;
-        console.log(`${expectation.toString()}, found ${TestOutcome[outcome]}`)
+        console.log(`${expectation.toString()}, found ${TestOutcome[outcome]} ${testHistory.historyString()}`)
     }
 
     return testHistoriesWithInvalidExpectations;

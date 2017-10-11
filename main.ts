@@ -1,7 +1,7 @@
-// wget -O platforms/gtk/release.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Release%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
-// wget -O platforms/gtk/TestExpectations https://svn.webkit.org/repository/webkit/trunk/LayoutTests/platform/gtk/TestExpectations
 var require: any;
 const fs: any = require("fs");
+
+const dontMindUnexpectedPasses = true;
 
 enum TestOutcome {
     Pass,
@@ -12,7 +12,8 @@ enum TestOutcome {
     ImageOnlyFailure,
     Slow,
     Crash,
-    Missing
+    Missing,
+    DumpJSConsoleLogInStdErr,
 }
 
 enum BuildType {
@@ -61,7 +62,8 @@ class TestExpectation {
     }
 
     expectedOutcomesInclude(outcome: TestOutcome): boolean {
-        return this.expectedOutcomes.has(outcome);
+        return this.expectedOutcomes.has(outcome) ||
+            this.expectedOutcomes.has(TestOutcome.Skip);
     }
 
     toString(): string {
@@ -168,7 +170,15 @@ function parseExpectations(filePath: string): TestExpectation[] {
                 .map(x => x.trim())
                 .filter(x => x != "")
                 .map(str => ensure(TestOutcome[str as keyof typeof TestOutcome],
-                    `Unknown outcome at line ${lineNo}: "${str}"`)));
+                    `Unknown outcome at line ${lineNo}: "${str}"`))
+                .filter(x => x != TestOutcome.DumpJSConsoleLogInStdErr));
+
+            if (outcomes.size == 0) {
+                outcomes = new Set([TestOutcome.Pass]);
+            }
+            if (dontMindUnexpectedPasses) {
+                outcomes.add(TestOutcome.Pass);
+            }
         } else {
             // console.warn(`Could not parse expected outcomes at line ${lineNo}: "${line}"`);
             // Consider as Skip
@@ -221,14 +231,209 @@ function parseExpectations(filePath: string): TestExpectation[] {
     return collectedExpectations;
 }
 
-function findTestFailingExpectation(path: Path,
-                                    outcome: TestOutcome,
-                                    buildType: BuildType) : TestExpectation | null
-{
 
-    return allExpectations.find(expectation =>
-        expectation.matchesTest(path, buildType) &&
-        !expectation.expectedOutcomesInclude(outcome)) || null;
+interface ReleaseJson {
+    [platformName: string]: JSONReleasePlatform;
+}
+interface JSONReleasePlatform {
+    tests: JSONTestDirectory;
+    buildNumbers: string[];
+    webkitRevision: string[];
+}
+interface JSONTestDirectory {
+    [nodeName: string]: JSONTestDirectory | JSONTest;
+}
+interface JSONTest {
+    results: JSONTestOutcomeHistoryEntry[],
+    times: JSONTestTimesHistoryEntry[];
+}
+type JSONTestOutcomeLetter = "F" | "W" | "P" | "I";
+type JSONTestOutcomeHistoryEntry = [
+    number, // number of occurrences
+    JSONTestOutcomeLetter // outcome
+];
+interface JSONTestTimesHistoryEntry {
+    0: number; // number of occurrences
+    1: number; // time in seconds
 }
 
-const allExpectations: TestExpectation[] = parseExpectations("platforms/gtk/TestExpectations");
+interface TestContext {
+    platform: "gtk";
+    buildType: BuildType;
+}
+
+interface TestResult {
+    webkitRevision: number;
+    outcome: TestOutcome;
+}
+
+interface BotsTestResults {
+    context: TestContext;
+    webkitRevisions: number[]; //most recent first
+    testHistories: TestHistory[];
+}
+
+class TestHistory {
+    constructor(public context: TestContext,
+                public testPath: Path,
+                public lastResults: TestResult[], // most recent first
+                public expectation: TestExpectation | null)
+    {}
+
+    matchesExpectation(webkitRevision: number): boolean | null {
+        const testResult = this.lastResults.find(x => x.webkitRevision == webkitRevision);
+        if (!testResult) {
+            // This test has not been run in the specified revision
+            return null;
+        }
+
+        if (!this.expectation) {
+            // This test does not appear in TestExpectations, it should pass
+            return testResult.outcome == TestOutcome.Pass;
+        } else {
+            // The test should match the expectation
+            return this.expectation.expectedOutcomesInclude(testResult.outcome);
+        }
+    }
+
+    getExpectationWithDefault() {
+       if (this.expectation) {
+           return this.expectation;
+       } else {
+           return new TestExpectation(-1, this.testPath, [], new Set([TestOutcome.Pass]), null);
+       }
+    }
+}
+
+function getReleaseJsonPlatformName(releaseJson: ReleaseJson) {
+    for (let key in releaseJson) {
+        if (key != "version") {
+            return key;
+        }
+    }
+    throw new Error("Could not find platform name in release.json.");
+}
+
+function parseOutcomeString(outcomeString: JSONTestOutcomeLetter): TestOutcome | null {
+    const outcomeDict: {[key: string]: TestOutcome|null} = {
+        "N": null, // no data,
+        "P": TestOutcome.Pass,
+        "F": TestOutcome.Failure,
+        "C": TestOutcome.Crash,
+        "T": TestOutcome.Timeout,
+        "I": TestOutcome.ImageOnlyFailure,
+        "A": TestOutcome.Failure, // AudioOnlyFailure?
+        "O": TestOutcome.Missing,
+    };
+    if (!(outcomeString in outcomeDict)) {
+        throw new Error(`Unknown test outcome string: "${outcomeString}"`);
+    }
+    return outcomeDict[outcomeString];
+}
+
+function maxBy<T, W>(array: T[], predicate: (item: T) => W): T | null {
+    let currentMaxWeight: W | undefined = undefined;
+    let currentMax: T | null = null;
+    let firstItem = true;
+    for (let item of array) {
+        const weight = predicate(item);
+        if (firstItem || weight > currentMaxWeight!) {
+            currentMax = item;
+            currentMaxWeight = weight;
+            firstItem = false;
+        }
+    }
+    return currentMax;
+}
+
+function findMostSpecificExpectation(allExpectations: TestExpectation[],
+                                     testPath: Path,
+                                     buildType: BuildType): TestExpectation | null
+{
+    const matches = allExpectations.filter(expectation => expectation.matchesTest(testPath, buildType));
+    return maxBy(matches, expectation => expectation.testPath.entries.length);
+}
+
+function parseReleaseJson(context: TestContext, releaseJson: ReleaseJson): BotsTestResults {
+    const jsonReleasePlatform = releaseJson[getReleaseJsonPlatformName(releaseJson)];
+    const collectedTestHistories = new Array<TestHistory>();
+    const webkitRevisions = jsonReleasePlatform.webkitRevision.map(x => parseInt(x));
+    if (webkitRevisions[0] <= webkitRevisions[1]) throw new Error("assertion error");
+
+    function collectTestHistory(testPathNodes: string[], jsonTest: JSONTest) {
+        const testPath = new Path(testPathNodes);
+        const expectation = findMostSpecificExpectation(allExpectations, testPath, context.buildType);
+
+        const lastResults = new Array<TestResult>();
+        let webkitRevisionIndex = 0;
+        for (let [occurrences, outcomeString] of jsonTest.results) {
+            const outcome = parseOutcomeString(outcomeString);
+            for (let i = 0; i < occurrences; i++) {
+                if (outcome != null && webkitRevisionIndex < webkitRevisions.length) {
+                    const testResult: TestResult = {
+                        webkitRevision: ensure(webkitRevisions[webkitRevisionIndex],
+                            `Could not find revision #${webkitRevisionIndex}`),
+                        outcome: outcome,
+                    };
+                    lastResults.push(testResult);
+                }
+                webkitRevisionIndex++;
+            }
+        }
+
+        const newTestHistory = new TestHistory(context, testPath, lastResults, expectation);
+        collectedTestHistories.push(newTestHistory);
+    }
+
+    function traverseTestTree(root: string[], folder: JSONTestDirectory) {
+        for (let entryName in folder) {
+            if (entryName.indexOf(".") != -1 && "results" in folder[entryName] && "times" in folder[entryName]) {
+                // it's a test
+                const jsonTest = <JSONTest>folder[entryName];
+                collectTestHistory(root.concat(entryName), jsonTest);
+            } else {
+                // it's a folder
+                traverseTestTree(root.concat(entryName), <JSONTestDirectory>folder[entryName]);
+            }
+        }
+    }
+
+    traverseTestTree([], jsonReleasePlatform.tests);
+    return {
+        webkitRevisions: webkitRevisions,
+        context: context,
+        testHistories: collectedTestHistories,
+    };
+}
+
+function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): TestHistory[] {
+    const latestRevision = botTestsResults.webkitRevisions[0];
+
+    const testHistoriesWithInvalidExpectations = botTestsResults.testHistories
+        .filter(history => history.matchesExpectation(latestRevision) === false);
+
+    for (let testHistory of testHistoriesWithInvalidExpectations) {
+        const expectation = testHistory.getExpectationWithDefault();
+        const outcome = testHistory.lastResults.find(r => r.webkitRevision == latestRevision)!.outcome;
+        console.log(`${expectation.toString()}, found ${TestOutcome[outcome]}`)
+    }
+
+    return testHistoriesWithInvalidExpectations;
+}
+
+const expectationFilePaths = [
+    "expectations/platforms/gtk/TestExpectations",
+    "expectations/TestExpectations",
+];
+
+const testContext: TestContext = {platform: "gtk", buildType: BuildType.Release};
+const allExpectations: TestExpectation[] = Array.prototype.concat.apply([], expectationFilePaths
+    .map(path => parseExpectations(path)));
+
+const releaseJson: ReleaseJson = JSON.parse(fs.readFileSync("results/gtk-release.json", "utf-8"));
+if ((<any>releaseJson).version != 4) {
+    console.warn("release.json format version has changed!");
+}
+
+const botTestsResults = parseReleaseJson(testContext, releaseJson);
+const testHistoriesWithInvalidExpectations = findTestsWithInvalidExpectations(botTestsResults);

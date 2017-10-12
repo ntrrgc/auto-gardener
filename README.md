@@ -2,6 +2,8 @@
 
 This is a simplified WebKit gardening dashboard that makes easier to report regressions.
 
+![](.images/screenshot.png)
+
 ## How is different from the flakiness dashboard?
 
  * Faster and lighter.

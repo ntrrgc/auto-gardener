@@ -1,7 +1,7 @@
 var require: any;
 const fs: any = require("fs");
 
-const dontMindUnexpectedPasses = false;
+const dontMindUnexpectedPasses = true;
 
 enum TestOutcome {
     NoData,

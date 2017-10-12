@@ -71,3 +71,11 @@ export function sortedBy<T, K>(items: Iterable<T>, keyFn: (item: T) => K[]): T[]
     });
     return ret;
 }
+
+export function ensure<T>(thing: T, errorIfNull: string = "Unexpected null") {
+    if (thing == null) {
+        throw Error(errorIfNull);
+    } else {
+        return thing;
+    }
+}

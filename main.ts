@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import {groupBy, maxBy, sortedBy} from "./functional-utils";
+import {ensure, groupBy, maxBy, sortedBy} from "./functional-utils";
 import {printVtLines, VtLine, vtPadLeft} from "./vt-utils";
 
 const dontShowUnexpectedPasses = false;
@@ -162,14 +162,6 @@ class Path {
 
     toString() {
         return this.entries.join("/");
-    }
-}
-
-function ensure<T>(thing: T, errorIfNull: string = "Unexpected null") {
-    if (thing == null) {
-        throw Error(errorIfNull);
-    } else {
-        return thing;
     }
 }
 

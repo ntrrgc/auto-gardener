@@ -432,6 +432,56 @@ class TestHistory {
             return `${revisionRange.start}-${revisionRange.end}`;
         }
     }
+
+    constructFirstFailedRevisionMessage(): string | null {
+        const firstFailedRange = this.findFirstFailedRevisionRange();
+        if (typeof firstFailedRange == "string") {
+            // Nothing interesting
+            return null;
+        }
+        const firstKnownFailedRevision: number = typeof firstFailedRange == "number"
+            ? firstFailedRange
+            : firstFailedRange.end;
+
+        const firstPassAfterwards = this.findFirstPassingRevisionAfter(firstKnownFailedRevision);
+        if (!firstPassAfterwards) {
+            // Consistently failing
+            return `Failing since ${TestHistory.formatRevisionRangeString(firstFailedRange)}`;
+        } else {
+            // Flaky, but since when?
+            const firstFailIsOld = this.isRevisionOld(firstKnownFailedRevision);
+            const firstPassAfterwardsIsOld = this.isRevisionOld(firstPassAfterwards);
+            if (firstFailIsOld && firstPassAfterwardsIsOld) {
+                return `Flaky since long ago`;
+            } else {
+                return `Flaky since ${TestHistory.formatRevisionRangeString(firstFailedRange)}`;
+            }
+        }
+    }
+
+    /**
+     * A revision is considered old if its slot in the test history has a great enough index.
+     * @param {number} revision
+     */
+    private isRevisionOld(revision: number) {
+        const index = this.lastResults.findIndex(result => result.webkitRevision == revision);
+        if (index == -1) {
+            throw new Error(`Could not find revision ${revision}`);
+        }
+        return index > 40;
+    }
+
+    private findFirstPassingRevisionAfter(firstKnownFailedRevision: number): number | null {
+        for (let i = this.lastResults.length - 1; i >= 0; i--) {
+            const result = this.lastResults[i];
+            const resultMatchesExpectation = this.matchesExpectation(result.webkitRevision);
+
+            if (result.webkitRevision > firstKnownFailedRevision && resultMatchesExpectation == true) {
+                return result.webkitRevision;
+            }
+        }
+        return null;
+    }
 }
 
 function getReleaseJsonPlatformName(releaseJson: ReleaseJson) {
@@ -665,10 +715,10 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
                     testHistory.historyString()}${colorSuffix}`,
                 bgColorCode: colorSuffix
             });
-            const failedRevision = testHistory.findFirstFailedRevisionRange();
-            if (failedRevision != "long ago") {
+            const failedRevisionMessage = testHistory.constructFirstFailedRevisionMessage();
+            if (failedRevisionMessage) {
                 lines.push({
-                    text: `${vtPadLeft("", testNameColumnWidth)}Failing since ${TestHistory.formatRevisionRangeString(failedRevision)}`,
+                    text: `${vtPadLeft("", testNameColumnWidth)}${failedRevisionMessage}`,
                     bgColorCode: colorSuffix,
                 });
             }

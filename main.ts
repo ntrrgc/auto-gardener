@@ -1,7 +1,7 @@
 var require: any;
 const fs: any = require("fs");
 
-const dontShowUnexpectedPasses = true;
+const dontShowUnexpectedPasses = false;
 
 enum TestOutcome {
     NoData,
@@ -352,6 +352,8 @@ interface BotsTestResults {
     testHistories: TestHistory[];
 }
 
+type RevisionRange = number | {start: number, end: number} | "long ago" | "never failed";
+
 class TestHistory {
     constructor(public context: TestContext,
                 public testPath: Path,
@@ -363,9 +365,14 @@ class TestHistory {
         return this.lastResults.find(x => x.webkitRevision == webkitRevision) || null;
     }
 
+    /**
+     * true: test matches expectation
+     * false: test does not match expectation
+     * null: there is no data for that test in that revision
+     */
     matchesExpectation(webkitRevision: number): boolean | null {
         const testResult = this.getTestResult(webkitRevision);
-        if (!testResult) {
+        if (!testResult || testResult.outcome == TestOutcome.NoData) {
             // This test has not been run in the specified revision
             return null;
         }
@@ -391,6 +398,39 @@ class TestHistory {
         return this.lastResults
             .map(result => testOutcomeToColor(result.outcome, "bg") + testOutcomeToLetter(result.outcome))
             .join("") + "\x1b[0m";
+    }
+
+    findFirstFailedRevisionRange(): RevisionRange {
+        let wasWorkingOnRevision: number | null = null;
+        for (let i = this.lastResults.length - 1; i >= 0; i--) {
+            const result = this.lastResults[i];
+            const resultMatchesExpectation = this.matchesExpectation(result.webkitRevision);
+            if (resultMatchesExpectation == false) {
+                if (wasWorkingOnRevision == null) {
+                    // First data we have on the test is already a failure
+                    return "long ago";
+                } else if (result.webkitRevision - wasWorkingOnRevision == 1) {
+                    // Failed on this exact revision
+                    return result.webkitRevision;
+                } else {
+                    // Failed somewhere between these revisions (both ends included)
+                    return {start: wasWorkingOnRevision + 1, end: result.webkitRevision};
+                }
+            } else if (resultMatchesExpectation == true) {
+                wasWorkingOnRevision = result.webkitRevision;
+            }
+        }
+        return "never failed";
+    }
+
+    static formatRevisionRangeString(revisionRange: RevisionRange): string {
+        if (typeof revisionRange == "string") {
+            return revisionRange;
+        } else if (typeof revisionRange == "number") {
+            return revisionRange.toString();
+        } else {
+            return `${revisionRange.start}-${revisionRange.end}`;
+        }
     }
 }
 
@@ -577,13 +617,16 @@ function formatContext(context: TestContext) {
 function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): TestHistory[] {
     const latestRevision = botTestsResults.webkitRevisions[0];
 
+    const colorReset = "\x1b[0m";
+    const testNameColumnWidth = 131;
+    const entireOutputWidth = 231;
+
     const testHistoriesWithInvalidExpectations = botTestsResults.testHistories
         .filter(history => history.matchesExpectation(latestRevision) === false);
 
     const testHistoryByOutcome = groupBy(testHistoriesWithInvalidExpectations,
             history => history.getTestResult(latestRevision)!.outcome);
 
-    const colorReset = "\x1b[0m";
     const lines = new Array<VtLine>();
 
     console.log(`\x1b[1;4mGardening report for ${latestRevision} (${formatContext(botTestsResults.context)})\x1b[21;24m`);
@@ -615,12 +658,20 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
             }
             lastTestDirName = testHistory.testPath.dirName();
 
-            const colorSufix = nextLineIsOdd ? colorOdd : colorEven;
-            lines.push({text: `${
-                vtPadLeft(testHistory.getExpectationWithDefault().toString(
-                    ToStringMode.WithColors | ToStringMode.PadBugLink,
-                    colorSufix), 131)}${
-                testHistory.historyString()}${colorSufix}`, bgColorCode: colorSufix});
+            const colorSuffix = nextLineIsOdd ? colorOdd : colorEven;
+            lines.push({
+                text: `${vtPadLeft(testHistory.getExpectationWithDefault().toString(
+                    ToStringMode.WithColors | ToStringMode.PadBugLink, colorSuffix), testNameColumnWidth)}${
+                    testHistory.historyString()}${colorSuffix}`,
+                bgColorCode: colorSuffix
+            });
+            const failedRevision = testHistory.findFirstFailedRevisionRange();
+            if (failedRevision != "long ago") {
+                lines.push({
+                    text: `${vtPadLeft("", testNameColumnWidth)}Failing since ${TestHistory.formatRevisionRangeString(failedRevision)}`,
+                    bgColorCode: colorSuffix,
+                });
+            }
 
             nextLineIsOdd = !nextLineIsOdd;
         }
@@ -629,7 +680,6 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
     }
 
     // Print lines, printing the background color code of the following one before the newline.
-    const entireOutputWidth = 230;
     if (lines.length > 0) {
         let i = 0;
         console.log(lines[i].bgColorCode);

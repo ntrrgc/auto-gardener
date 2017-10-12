@@ -22,3 +22,9 @@ This is a simplified WebKit gardening dashboard that makes easier to report regr
 ./download-results
 ./auto-gardener gtk-release
 ```
+
+## FAQ
+
+### Why is the output empty?
+
+The build may have fail and therefore there are no data for the tests in the last revision.

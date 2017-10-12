@@ -4,6 +4,7 @@ const fs: any = require("fs");
 const dontMindUnexpectedPasses = false;
 
 enum TestOutcome {
+    NoData,
     Pass,
     Failure,
     Skip,
@@ -16,8 +17,10 @@ enum TestOutcome {
     DumpJSConsoleLogInStdErr,
 }
 
-function testOutcomeToLetter(outcome: TestOutcome | null): string {
+function testOutcomeToLetter(outcome: TestOutcome): string {
     switch (outcome) {
+        case TestOutcome.NoData:
+            return "N";
         case TestOutcome.Pass:
             return "P";
         case TestOutcome.Failure:
@@ -30,16 +33,19 @@ function testOutcomeToLetter(outcome: TestOutcome | null): string {
             return "I";
         case TestOutcome.Slow:
             return "S";
-        case null:
-            return " ";
+        case TestOutcome.Missing:
+            return "M";
         default:
             throw new Error(`Unexpected outcome: ${TestOutcome[outcome]} (${outcome})`);
     }
 }
 
-function testOutcomeToColor(outcome: TestOutcome | null, colorType: "bg" | "fg"): string {
+function testOutcomeToColor(outcome: TestOutcome, colorType: "bg" | "fg"): string {
     const prefix = colorType == "bg" ? "\x1b[48;5;" : "\x1b[38;5;";
     switch (outcome) {
+        case TestOutcome.NoData:
+        case TestOutcome.Missing:
+            return `${prefix}251m`;
         case TestOutcome.Pass:
             return `${prefix}34m`;
         case TestOutcome.Failure:
@@ -52,8 +58,6 @@ function testOutcomeToColor(outcome: TestOutcome | null, colorType: "bg" | "fg")
             return `${prefix}27m`;
         case TestOutcome.Slow:
             return `${prefix}0m`;
-        case null:
-            return `${prefix}255m`;
         default:
             throw new Error(`Unexpected outcome: ${TestOutcome[outcome]} (${outcome})`);
     }
@@ -322,7 +326,7 @@ interface JSONTest {
     results: JSONTestOutcomeHistoryEntry[],
     times: JSONTestTimesHistoryEntry[];
 }
-type JSONTestOutcomeLetter = "F" | "W" | "P" | "I";
+type JSONTestOutcomeLetter = string;
 type JSONTestOutcomeHistoryEntry = [
     number, // number of occurrences
     JSONTestOutcomeLetter // outcome
@@ -399,9 +403,9 @@ function getReleaseJsonPlatformName(releaseJson: ReleaseJson) {
     throw new Error("Could not find platform name in release.json.");
 }
 
-function parseOutcomeString(outcomeString: JSONTestOutcomeLetter): TestOutcome | null {
-    const outcomeDict: {[key: string]: TestOutcome|null} = {
-        "N": null, // no data,
+function parseOutcomeString(outcomeString: JSONTestOutcomeLetter): TestOutcome {
+    const outcomeDict: {[key: string]: TestOutcome} = {
+        "N": TestOutcome.NoData, // no data,
         "P": TestOutcome.Pass,
         "F": TestOutcome.Failure,
         "C": TestOutcome.Crash,
@@ -454,7 +458,7 @@ function parseReleaseJson(context: TestContext, releaseJson: ReleaseJson): BotsT
         for (let [occurrences, outcomeString] of jsonTest.results) {
             const outcome = parseOutcomeString(outcomeString);
             for (let i = 0; i < occurrences; i++) {
-                if (outcome != null && webkitRevisionIndex < webkitRevisions.length) {
+                if (webkitRevisionIndex < webkitRevisions.length) {
                     const testResult: TestResult = {
                         webkitRevision: ensure(webkitRevisions[webkitRevisionIndex],
                             `Could not find revision #${webkitRevisionIndex}`),
@@ -582,9 +586,14 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
     const colorReset = "\x1b[0m";
     const lines = new Array<VtLine>();
 
-    console.log(`\x1b[1;4mGardening report for ${latestRevision} (${formatContext(botTestsResults.context)})\x1b[21;41m`);
+    console.log(`\x1b[1;4mGardening report for ${latestRevision} (${formatContext(botTestsResults.context)})\x1b[21;24m`);
 
     for (let [outcome, outcomeHistories] of sortedBy(testHistoryByOutcome.entries(), ([outcome, _]) => [outcome])) {
+        if (outcome == TestOutcome.NoData) {
+            // No point to report tests we no longer have any data about.
+            continue;
+        }
+
         const colorEven = "\x1b[48;5;8;38;5;256m";
         const colorOdd = "\x1b[48;5;243;38;5;256m";
 
@@ -610,7 +619,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
             lines.push({text: `${
                 vtPadLeft(testHistory.getExpectationWithDefault().toString(
                     ToStringMode.WithColors | ToStringMode.PadBugLink,
-                    colorSufix), 130)}${
+                    colorSufix), 131)}${
                 testHistory.historyString()}${colorSufix}`, bgColorCode: colorSufix});
 
             nextLineIsOdd = !nextLineIsOdd;
@@ -620,7 +629,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
     }
 
     // Print lines, printing the background color code of the following one before the newline.
-    const entireOutputWidth = 229;
+    const entireOutputWidth = 230;
     if (lines.length > 0) {
         let i = 0;
         console.log(lines[i].bgColorCode);

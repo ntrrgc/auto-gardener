@@ -38,6 +38,8 @@ export function testOutcomeToLetter(outcome: TestOutcome): string {
             return "M";
         case TestOutcome.Skip:
             return "X";
+        case TestOutcome.WontFix:
+            return "W";
         default:
             throw new Error(`Unexpected outcome: ${TestOutcome[outcome]} (${outcome})`);
     }
@@ -49,6 +51,7 @@ export function testOutcomeToColor(outcome: TestOutcome, colorType: "bg" | "fg")
         case TestOutcome.NoData:
         case TestOutcome.Missing:
         case TestOutcome.Skip:
+        case TestOutcome.WontFix:
             return `${prefix}251m`;
         case TestOutcome.Pass:
             return `${prefix}34m`;

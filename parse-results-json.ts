@@ -74,6 +74,33 @@ function findMostSpecificExpectation(allExpectations: TestExpectation[],
     return maxBy(matches, expectation => expectation.testPath.entries.length);
 }
 
+/**
+ * For some reason sometimes the same revision is tested twice.
+ * Remove the data from the most recent runs so there is only one build per revision.
+ */
+function cleanDuplicateBuilds(webkitRevisions: number[], collectedTestHistories: TestHistory[]) {
+    let lastRevision: number | null = null;
+    let indicesToRemove = new Set<number>();
+    for (let i = webkitRevisions.length - 1; i >= 0; i--) {
+        const currentRevision = webkitRevisions[i];
+        if (currentRevision == lastRevision) {
+            // Remove the newer one
+            indicesToRemove.add(i);
+        }
+
+        lastRevision = currentRevision;
+    }
+
+    const cleanWebkitRevisions = webkitRevisions.filter((_, i) => !indicesToRemove.has(i));
+
+    // Replace the old webkitRevisions array contents
+    Array.prototype.splice.apply(webkitRevisions, [0, webkitRevisions.length].concat(cleanWebkitRevisions));
+
+    for (let testHistory of collectedTestHistories) {
+        testHistory.lastResults = testHistory.lastResults.filter((_, i) => !indicesToRemove.has(i));
+    }
+}
+
 export function constructBotTestsResultsFromJson(context: TestContext,
                                                  allExpectations: TestExpectation[],
                                                  testsResultsPath: string): BotsTestResults {
@@ -82,9 +109,9 @@ export function constructBotTestsResultsFromJson(context: TestContext,
         console.warn("JSON format version has changed!");
     }
 
-    const jsonReleasePlatform = resultsJson[getTestsResultsJsonPlatformName(resultsJson)];
+    const jsonResultsPlatform = resultsJson[getTestsResultsJsonPlatformName(resultsJson)];
     const collectedTestHistories = new Array<TestHistory>();
-    const webkitRevisions = jsonReleasePlatform.webkitRevision.map(x => parseInt(x));
+    const webkitRevisions = jsonResultsPlatform.webkitRevision.map(x => parseInt(x));
 
     function collectTestHistory(testPathNodes: string[], jsonTest: JSONTest) {
         const testPath = new Path(testPathNodes);
@@ -124,7 +151,10 @@ export function constructBotTestsResultsFromJson(context: TestContext,
         }
     }
 
-    traverseTestTree([], jsonReleasePlatform.tests);
+    traverseTestTree([], jsonResultsPlatform.tests);
+
+    cleanDuplicateBuilds(webkitRevisions, collectedTestHistories);
+
     return {
         webkitRevisions: webkitRevisions,
         context: context,

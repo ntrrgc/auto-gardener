@@ -312,10 +312,10 @@ function parseExpectations(filePath: string): TestExpectation[] {
 }
 
 
-interface ReleaseJson {
-    [platformName: string]: JSONReleasePlatform;
+interface JSONTestsResultsRoot {
+    [platformName: string]: JSONTestsResultsPlatform;
 }
-interface JSONReleasePlatform {
+interface JSONTestsResultsPlatform {
     tests: JSONTestDirectory;
     buildNumbers: string[];
     webkitRevision: string[];
@@ -490,13 +490,13 @@ class TestHistory {
     }
 }
 
-function getReleaseJsonPlatformName(releaseJson: ReleaseJson) {
-    for (let key in releaseJson) {
+function getTestsResultsJsonPlatformName(jsonRoot: JSONTestsResultsRoot) {
+    for (let key in jsonRoot) {
         if (key != "version") {
             return key;
         }
     }
-    throw new Error("Could not find platform name in release.json.");
+    throw new Error("Could not find platform name in tests results JSON root.");
 }
 
 function parseOutcomeString(outcomeString: JSONTestOutcomeLetter): TestOutcome {
@@ -524,8 +524,8 @@ function findMostSpecificExpectation(allExpectations: TestExpectation[],
     return maxBy(matches, expectation => expectation.testPath.entries.length);
 }
 
-function parseReleaseJson(context: TestContext, releaseJson: ReleaseJson): BotsTestResults {
-    const jsonReleasePlatform = releaseJson[getReleaseJsonPlatformName(releaseJson)];
+function constructBotTestsResultsFromJson(context: TestContext, releaseJson: JSONTestsResultsRoot): BotsTestResults {
+    const jsonReleasePlatform = releaseJson[getTestsResultsJsonPlatformName(releaseJson)];
     const collectedTestHistories = new Array<TestHistory>();
     const webkitRevisions = jsonReleasePlatform.webkitRevision.map(x => parseInt(x));
     if (webkitRevisions[0] <= webkitRevisions[1]) throw new Error("assertion error");
@@ -659,10 +659,10 @@ const testContext: TestContext = {platform: "gtk", buildType: BuildType.Release}
 const allExpectations: TestExpectation[] = Array.prototype.concat.apply([], expectationFilePaths
     .map(path => parseExpectations(path)));
 
-const releaseJson: ReleaseJson = JSON.parse(fs.readFileSync("results/gtk-release.json", "utf-8"));
-if ((<any>releaseJson).version != 4) {
+const resultsJson: JSONTestsResultsRoot = JSON.parse(fs.readFileSync("results/gtk-release.json", "utf-8"));
+if ((<any>resultsJson).version != 4) {
     console.warn("release.json format version has changed!");
 }
 
-const botTestsResults = parseReleaseJson(testContext, releaseJson);
+const botTestsResults = constructBotTestsResultsFromJson(testContext, resultsJson);
 findTestsWithInvalidExpectations(botTestsResults);

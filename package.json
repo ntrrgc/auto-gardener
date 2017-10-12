@@ -5,11 +5,12 @@
   "main": "main.js",
   "dependencies": {
     "@types/node": "^8.0.34",
+    "ts-node": "^3.3.0",
     "typescript": "^2.5.3"
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "run": "ts-node main.ts"
   },
   "author": ""
 }

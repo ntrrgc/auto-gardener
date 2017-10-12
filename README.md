@@ -16,7 +16,7 @@ This is a simplified WebKit gardening dashboard that makes easier to report regr
 
 1. Clone the repository.
 
-2. Run `npm install`.
+2. Run `npm install`. You may need to install Node.js first in your system.
 
 ## Usage
 

@@ -582,7 +582,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
         const colorEven = "\x1b[48;5;8;38;5;256m";
         const colorOdd = "\x1b[48;5;243;38;5;256m";
 
-        lines.push({text: `\x1b[1mUnexpected ${TestOutcome[outcome]}:\x1b[0m${colorEven}`, bgColorCode: colorReset});
+        lines.push({text: `\x1b[1mUnexpected ${TestOutcome[outcome]}:\x1b[0m`, bgColorCode: colorReset});
 
         outcomeHistories = sortedBy(outcomeHistories, (testHistory: TestHistory) => [
             testHistory.testPath.dirName(),
@@ -605,7 +605,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
                 vtPadLeft(testHistory.getExpectationWithDefault().toString(
                     ToStringMode.WithColors | ToStringMode.PadBugLink,
                     colorSufix), 130)}${
-                testHistory.historyString()}`, bgColorCode: colorSufix});
+                testHistory.historyString()}${colorSufix}`, bgColorCode: colorSufix});
 
             nextLineIsOdd = !nextLineIsOdd;
         }
@@ -614,6 +614,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
     }
 
     // Print lines, printing the background color code of the following one before the newline.
+    const entireOutputWidth = 229;
     if (lines.length > 0) {
         let i = 0;
         console.log(lines[i].bgColorCode);
@@ -622,7 +623,11 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
                 ? lines[i + 1].bgColorCode
                 : colorReset;
 
-            console.log(lines[i].text + nextLineColorCode);
+            // Redundant color codes are added at the beginning of the line to be friendly with `less -R`.
+            // Also, padding the lines to the console width avoids less resetting the color for the remaining
+            // line characters.
+            const paddedText = vtPadLeft(lines[i].text, entireOutputWidth);
+            console.log(lines[i].bgColorCode + paddedText + nextLineColorCode);
         }
     }
 

@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eu
 DIR="$(dirname "$0")"
+cd "$DIR"
 
 ./node_modules/.bin/ts-node "$DIR/main.ts" "$@"

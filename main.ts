@@ -2,6 +2,7 @@ import {groupBy, sortedBy} from "./functional-utils";
 import {printVtLines, VtLine, vtPadLeft} from "./vt-utils";
 import {parseExpectations} from "./parse-expectations";
 import {constructBotTestsResultsFromJson} from "./parse-results-json";
+import {availableContexts, BuildType, TestContext} from "./contexts";
 
 export enum TestOutcome {
     NoData,
@@ -35,6 +36,8 @@ export function testOutcomeToLetter(outcome: TestOutcome): string {
             return "S";
         case TestOutcome.Missing:
             return "M";
+        case TestOutcome.Skip:
+            return "X";
         default:
             throw new Error(`Unexpected outcome: ${TestOutcome[outcome]} (${outcome})`);
     }
@@ -45,6 +48,7 @@ export function testOutcomeToColor(outcome: TestOutcome, colorType: "bg" | "fg")
     switch (outcome) {
         case TestOutcome.NoData:
         case TestOutcome.Missing:
+        case TestOutcome.Skip:
             return `${prefix}251m`;
         case TestOutcome.Pass:
             return `${prefix}34m`;
@@ -61,11 +65,6 @@ export function testOutcomeToColor(outcome: TestOutcome, colorType: "bg" | "fg")
         default:
             throw new Error(`Unexpected outcome: ${TestOutcome[outcome]} (${outcome})`);
     }
-}
-
-export enum BuildType {
-    Debug,
-    Release
 }
 
 export enum ToStringMode {
@@ -164,11 +163,6 @@ export class Path {
     }
 }
 
-
-export interface TestContext {
-    platform: "gtk";
-    buildType: BuildType;
-}
 
 export interface TestResult {
     webkitRevision: number;
@@ -392,14 +386,40 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
     return testHistoriesWithInvalidExpectations;
 }
 
-const expectationFilePaths = [
-    "expectations/platforms/gtk/TestExpectations",
-    "expectations/TestExpectations",
-];
+function printAvailableContexts() {
+    console.log();
+    console.log("Available contexts:");
+    for (let ctx of availableContexts) {
+        console.log(`  ${ctx.id}`);
+    }
+}
 
-const testContext: TestContext = {platform: "gtk", buildType: BuildType.Release};
-const allExpectations: TestExpectation[] = Array.prototype.concat.apply([], expectationFilePaths
-    .map(path => parseExpectations(path)));
+function main() {
+    if (process.argv.length != 3) {
+        console.log("Usage: auto-gardener <context-id>");
+        printAvailableContexts();
+        process.exit(1);
+        return;
+    }
 
-const botTestsResults = constructBotTestsResultsFromJson(testContext, allExpectations, "results/gtk-release.json");
-findTestsWithInvalidExpectations(botTestsResults);
+    const chosenContextId = process.argv[2];
+
+    const testContext = availableContexts.find(ctx => ctx.id == chosenContextId);
+    if (!testContext) {
+        console.error(`Unknown context: ${chosenContextId}`);
+        printAvailableContexts();
+        process.exit(1);
+        return;
+    }
+
+    const allExpectations: TestExpectation[] = Array.prototype.concat.apply([],
+        testContext.testExpectationPaths.map(
+            path => parseExpectations(`${__dirname}/expectations/${path}`)));
+
+    const botTestsResults = constructBotTestsResultsFromJson(testContext, allExpectations,
+        `${__dirname}/results/${testContext.id}.json`);
+
+    findTestsWithInvalidExpectations(botTestsResults);
+}
+
+main();

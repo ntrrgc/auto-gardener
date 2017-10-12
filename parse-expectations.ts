@@ -1,6 +1,7 @@
 import * as fs from "fs";
-import {BuildType, Path, TestExpectation, TestOutcome} from "./main";
+import {Path, TestExpectation, TestOutcome} from "./main";
 import {ensure} from "./functional-utils";
+import {BuildType} from "./contexts";
 
 const dontShowUnexpectedPasses = false;
 

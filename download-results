@@ -1,7 +1,13 @@
 #!/bin/bash
-mkdir -p expectations/platforms/gtk
-mkdir -p results
+cd "$(dirname "$0")"
 
+mkdir -p results
+wget -O results/gtk-debug.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Debug%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
 wget -O results/gtk-release.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Release%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
-wget -O expectations/TestExpectations https://svn.webkit.org/repository/webkit/trunk/LayoutTests/TestExpectations
-wget -O expectations/platforms/gtk/TestExpectations https://svn.webkit.org/repository/webkit/trunk/LayoutTests/platform/gtk/TestExpectations
+wget -O results/gtk-release-wayland.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Release Wayland%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
+wget -O results/wpe-release.json "https://webkit-test-results.webkit.org/testfile?builder=WPE%20Linux%2064-bit%20Release%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
+
+mkdir -p expectations/platform/{gtk,gtk-wayland,wpe}
+for path in TestExpectations platform/gtk/TestExpectations platform/wpe/TestExpectations platform/gtk-wayland/TestExpectations; do
+    wget -O expectations/$path https://svn.webkit.org/repository/webkit/trunk/LayoutTests/$path
+done

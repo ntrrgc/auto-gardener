@@ -1,15 +1,14 @@
 import * as fs from "fs";
 import {
     BotsTestResults,
-    BuildType,
     Path,
-    TestContext,
     TestExpectation,
     TestHistory,
     TestOutcome,
     TestResult
 } from "./main";
 import {ensure, maxBy} from "./functional-utils";
+import {BuildType, TestContext} from "./contexts";
 
 interface JSONTestsResultsRoot {
     [platformName: string]: JSONTestsResultsPlatform;
@@ -60,6 +59,7 @@ function parseOutcomeString(outcomeString: JSONTestOutcomeLetter): TestOutcome {
         "I": TestOutcome.ImageOnlyFailure,
         "A": TestOutcome.Failure, // AudioOnlyFailure?
         "O": TestOutcome.Missing,
+        "X": TestOutcome.Skip,
     };
     if (!(outcomeString in outcomeDict)) {
         throw new Error(`Unknown test outcome string: "${outcomeString}"`);
@@ -85,7 +85,6 @@ export function constructBotTestsResultsFromJson(context: TestContext,
     const jsonReleasePlatform = resultsJson[getTestsResultsJsonPlatformName(resultsJson)];
     const collectedTestHistories = new Array<TestHistory>();
     const webkitRevisions = jsonReleasePlatform.webkitRevision.map(x => parseInt(x));
-    if (webkitRevisions[0] <= webkitRevisions[1]) throw new Error("assertion error");
 
     function collectTestHistory(testPathNodes: string[], jsonTest: JSONTest) {
         const testPath = new Path(testPathNodes);

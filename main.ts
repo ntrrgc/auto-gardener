@@ -1,4 +1,6 @@
 import * as fs from "fs";
+import {groupBy, maxBy, sortedBy} from "./functional-utils";
+import {printVtLines, VtLine, vtPadLeft} from "./vt-utils";
 
 const dontShowUnexpectedPasses = false;
 
@@ -514,21 +516,6 @@ function parseOutcomeString(outcomeString: JSONTestOutcomeLetter): TestOutcome {
     return outcomeDict[outcomeString];
 }
 
-function maxBy<T, W>(array: T[], predicate: (item: T) => W): T | null {
-    let currentMaxWeight: W | undefined = undefined;
-    let currentMax: T | null = null;
-    let firstItem = true;
-    for (let item of array) {
-        const weight = predicate(item);
-        if (firstItem || weight > currentMaxWeight!) {
-            currentMax = item;
-            currentMaxWeight = weight;
-            firstItem = false;
-        }
-    }
-    return currentMax;
-}
-
 function findMostSpecificExpectation(allExpectations: TestExpectation[],
                                      testPath: Path,
                                      buildType: BuildType): TestExpectation | null
@@ -589,81 +576,6 @@ function parseReleaseJson(context: TestContext, releaseJson: ReleaseJson): BotsT
     };
 }
 
-function groupBy<K, T>(items: T[], keyFn: (item: T) => K): Map<K, T[]> {
-    const ret = new Map<K, T[]>();
-    for (let item of items) {
-        const key = keyFn(item);
-
-        if (!ret.has(key)) {
-            ret.set(key, []);
-        }
-
-        ret.get(key)!.push(item);
-    }
-    return ret;
-}
-
-function compareArrays<T>(a: T[], b: T[]): number {
-    for (let i = 0; i < a.length; i++) {
-        if (i > b.length) {
-            return 1;
-        }
-
-        if (a[i] > b[i]) {
-            return 1;
-        } else if (a[i] < b[i]) {
-            return -1;
-        }
-    }
-    return 0;
-}
-
-function compareArraysUnitTests() {
-    function comp(a: any[], b: any[], expected: number) {
-        const actual = compareArrays(a, b);
-        if (actual != expected) {
-            console.warn(`${a} - ${b} ~ ${actual} (expected ${expected})`);
-        }
-    }
-
-    comp([], [], 0);
-    comp([1], [2], -1);
-    comp([2], [1], 1);
-    comp([1], [1], 0);
-    comp(["a"], ["b"], -1);
-    comp(["b"], ["a"], 1);
-    comp(["a"], ["a"], 0);
-    comp(["a", 1], ["a", null], 1);
-    comp(["a", 1], ["a", 1], 0);
-    comp(["a", 1], ["a", 2], -1);
-}
-
-function sortedBy<T, K>(items: Iterable<T>, keyFn: (item: T) => K[]): T[] {
-    const ret = Array.from(items);
-    ret.sort((a, b) => {
-        const ka = keyFn(a);
-        const kb = keyFn(b);
-        return compareArrays(ka, kb);
-    });
-    return ret;
-}
-
-function vtPadLeft(str: string, desiredWidth: number) {
-    const widthWithoutVtCodes = str.replace(/\x1b.*?m/g, "").length;
-
-    for (let i = widthWithoutVtCodes; i < desiredWidth; i++) {
-        str += " ";
-    }
-    return str;
-}
-
-interface VtLine {
-    // Unfortunately, for a line to be covered entirely by a background color, it must be set before the end of the
-    // previous line, so we have to plan them in advance.
-    text: string;
-    bgColorCode: string;
-}
-
 function formatContext(context: TestContext) {
     return `${context.platform.toUpperCase()} ${BuildType[context.buildType]}`;
 }
@@ -673,7 +585,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
 
     const colorReset = "\x1b[0m";
     const testNameColumnWidth = 131;
-    const entireOutputWidth = 231;
+    const consoleWidth = 231;
 
     const testHistoriesWithInvalidExpectations = botTestsResults.testHistories
         .filter(history => history.matchesExpectation(latestRevision) === false);
@@ -733,22 +645,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
         lines.push({text: "", bgColorCode: colorReset});
     }
 
-    // Print lines, printing the background color code of the following one before the newline.
-    if (lines.length > 0) {
-        let i = 0;
-        console.log(lines[i].bgColorCode);
-        for (; i < lines.length; i++) {
-            const nextLineColorCode = lines[i + 1]
-                ? lines[i + 1].bgColorCode
-                : colorReset;
-
-            // Redundant color codes are added at the beginning of the line to be friendly with `less -R`.
-            // Also, padding the lines to the console width avoids less resetting the color for the remaining
-            // line characters.
-            const paddedText = vtPadLeft(lines[i].text, entireOutputWidth);
-            console.log(lines[i].bgColorCode + paddedText + nextLineColorCode);
-        }
-    }
+    printVtLines(lines, consoleWidth);
 
     return testHistoriesWithInvalidExpectations;
 }

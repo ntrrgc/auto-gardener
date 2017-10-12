@@ -315,10 +315,6 @@ export class TestHistory {
     }
 }
 
-function formatContext(context: TestContext) {
-    return `${context.platform.toUpperCase()} ${BuildType[context.buildType]}`;
-}
-
 function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): TestHistory[] {
     const latestRevision = botTestsResults.webkitRevisions[0];
     const countRevisions = botTestsResults.webkitRevisions.length;
@@ -335,7 +331,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
 
     const lines = new Array<VtLine>();
 
-    console.log(`\x1b[1;4mGardening report for ${latestRevision} (${formatContext(botTestsResults.context)})\x1b[21;24m`);
+    console.log(`\x1b[1;4mGardening report for ${latestRevision}, ${botTestsResults.context.botsPlatformName}\x1b[21;24m`);
 
     for (let [outcome, outcomeHistories] of sortedBy(testHistoryByOutcome.entries(), ([outcome, _]) => [outcome])) {
         if (outcome == TestOutcome.NoData) {

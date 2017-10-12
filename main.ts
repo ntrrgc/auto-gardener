@@ -226,7 +226,7 @@ export class TestHistory {
             .join("") + "\x1b[0m";
     }
 
-    findFirstFailedRevisionRange(): RevisionRange {
+    findFirstFailedRevisionRange(countRevisionsInBuild: number): RevisionRange {
         let wasWorkingOnRevision: number | null = null;
         for (let i = this.lastResults.length - 1; i >= 0; i--) {
             const result = this.lastResults[i];
@@ -234,7 +234,7 @@ export class TestHistory {
             if (resultMatchesExpectation == false) {
                 if (wasWorkingOnRevision == null) {
                     // First data we have on the test is already a failure
-                    if (this.lastResults.length >= 100) {
+                    if (this.lastResults.length >= countRevisionsInBuild) {
                         return "long ago";
                     } else {
                         // The test is quite recent, it's useful to know its revision
@@ -264,8 +264,8 @@ export class TestHistory {
         }
     }
 
-    constructFirstFailedRevisionMessage(): string | null {
-        const firstFailedRange = this.findFirstFailedRevisionRange();
+    constructFirstFailedRevisionMessage(countRevisionsInBuild: number): string | null {
+        const firstFailedRange = this.findFirstFailedRevisionRange(countRevisionsInBuild);
         if (typeof firstFailedRange == "string") {
             // Nothing interesting
             return null;
@@ -321,6 +321,7 @@ function formatContext(context: TestContext) {
 
 function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): TestHistory[] {
     const latestRevision = botTestsResults.webkitRevisions[0];
+    const countRevisions = botTestsResults.webkitRevisions.length;
 
     const colorReset = "\x1b[0m";
     const testNameColumnWidth = 131;
@@ -370,7 +371,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
                     testHistory.historyString()}${colorSuffix}`,
                 bgColorCode: colorSuffix
             });
-            const failedRevisionMessage = testHistory.constructFirstFailedRevisionMessage();
+            const failedRevisionMessage = testHistory.constructFirstFailedRevisionMessage(countRevisions);
             if (failedRevisionMessage) {
                 lines.push({
                     text: `${vtPadLeft("", testNameColumnWidth)}${failedRevisionMessage}`,

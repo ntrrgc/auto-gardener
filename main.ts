@@ -1,7 +1,7 @@
 var require: any;
 const fs: any = require("fs");
 
-const dontMindUnexpectedPasses = true;
+const dontShowUnexpectedPasses = true;
 
 enum TestOutcome {
     NoData,
@@ -255,7 +255,7 @@ function parseExpectations(filePath: string): TestExpectation[] {
             if (outcomes.size == 0) {
                 outcomes = new Set([TestOutcome.Pass]);
             }
-            if (dontMindUnexpectedPasses) {
+            if (dontShowUnexpectedPasses) {
                 outcomes.add(TestOutcome.Pass);
             }
         } else {

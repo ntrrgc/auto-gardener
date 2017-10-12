@@ -566,6 +566,10 @@ interface VtLine {
     bgColorCode: string;
 }
 
+function formatContext(context: TestContext) {
+    return `${context.platform.toUpperCase()} ${BuildType[context.buildType]}`;
+}
+
 function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): TestHistory[] {
     const latestRevision = botTestsResults.webkitRevisions[0];
 
@@ -577,6 +581,8 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
 
     const colorReset = "\x1b[0m";
     const lines = new Array<VtLine>();
+
+    console.log(`\x1b[1;4mGardening report for ${latestRevision} (${formatContext(botTestsResults.context)})\x1b[21;41m`);
 
     for (let [outcome, outcomeHistories] of sortedBy(testHistoryByOutcome.entries(), ([outcome, _]) => [outcome])) {
         const colorEven = "\x1b[48;5;8;38;5;256m";

@@ -22,7 +22,7 @@ This is a simplified WebKit gardening dashboard that makes easier to report regr
 
 ```
 ./download-results
-./auto-gardener gtk-release |less -R
+./auto-gardener gtk-release |less -RS
 ```
 
 ## FAQ

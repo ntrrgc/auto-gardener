@@ -1,7 +1,7 @@
 {
   "name": "auto-gardener",
   "version": "1.0.0",
-  "description": "",
+  "description": "Simplified WebKit gardening dashboard that makes easier to report regressions.",
   "main": "main.js",
   "dependencies": {
     "@types/node": "^8.0.34",
@@ -12,5 +12,7 @@
   "scripts": {
     "run": "ts-node main.ts"
   },
-  "author": ""
+  "author": "Alicia Boya García <aboya@igalia.com>",
+  "repository": "https://github.com/ntrrgc/auto-gardener",
+  "license": "MPL-2.0"
 }

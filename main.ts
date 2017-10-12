@@ -199,7 +199,7 @@ function consumeBracketedEntityToken(line: string): [string, string | null] {
     return [match[1], match[2]];
 }
 
-function test() {
+function consumeBracketedEntityTokenUnitTests() {
     function check(a: [string, string|null], b: [string, string|null]) {
         if (a[0] != b[0]) {
             console.warn(`Expected line "${a[0]}" == "${b[0]}"`);
@@ -618,7 +618,7 @@ function compareArrays<T>(a: T[], b: T[]): number {
     return 0;
 }
 
-function poorManCompareArrayUnitTests() {
+function compareArraysUnitTests() {
     function comp(a: any[], b: any[], expected: number) {
         const actual = compareArrays(a, b);
         if (actual != expected) {

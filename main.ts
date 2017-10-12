@@ -1,5 +1,4 @@
-var require: any;
-const fs: any = require("fs");
+import * as fs from "fs";
 
 const dontShowUnexpectedPasses = false;
 

@@ -4,6 +4,7 @@
   "description": "",
   "main": "main.js",
   "dependencies": {
+    "@types/node": "^8.0.34",
     "typescript": "^2.5.3"
   },
   "devDependencies": {},

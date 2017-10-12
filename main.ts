@@ -408,7 +408,12 @@ class TestHistory {
             if (resultMatchesExpectation == false) {
                 if (wasWorkingOnRevision == null) {
                     // First data we have on the test is already a failure
-                    return "long ago";
+                    if (this.lastResults.length >= 100) {
+                        return "long ago";
+                    } else {
+                        // The test is quite recent, it's useful to know its revision
+                        return result.webkitRevision;
+                    }
                 } else if (result.webkitRevision - wasWorkingOnRevision == 1) {
                     // Failed on this exact revision
                     return result.webkitRevision;

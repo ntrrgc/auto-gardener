@@ -21,6 +21,7 @@ export const availableContexts: TestContext[] = [
         buildType: BuildType.Debug,
         testExpectationPaths: [
             "platform/gtk/TestExpectations",
+            "platform/wk2/TestExpectations",
             "TestExpectations",
         ],
     },
@@ -31,6 +32,7 @@ export const availableContexts: TestContext[] = [
         buildType: BuildType.Release,
         testExpectationPaths: [
             "platform/gtk/TestExpectations",
+            "platform/wk2/TestExpectations",
             "TestExpectations",
         ],
     },
@@ -42,6 +44,7 @@ export const availableContexts: TestContext[] = [
         testExpectationPaths: [
             "platform/gtk-wayland/TestExpectations",
             "platform/gtk/TestExpectations",
+            "platform/wk2/TestExpectations",
             "TestExpectations",
         ],
     },
@@ -53,6 +56,7 @@ export const availableContexts: TestContext[] = [
         testExpectationPaths: [
             "platform/wpe/TestExpectations",
             "platform/gtk/TestExpectations",
+            "platform/wk2/TestExpectations",
             "TestExpectations",
         ],
     },

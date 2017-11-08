@@ -3,4 +3,12 @@ set -eu
 DIR="$(dirname "$0")"
 cd "$DIR"
 
-./node_modules/.bin/ts-node "$DIR/main.ts" "$@"
+gardener=(./node_modules/.bin/ts-node "$DIR/main.ts" "$@")
+
+if [ -t 0 ] && [ -t 1 ]; then
+  # If stdin and stdout are a tty, pipe through less.
+  "${gardener[@]}" | less -SR
+else
+  # Otherwise (e.g. when piped to another process), run unwrapped.
+  "${gardener[@]}"
+fi

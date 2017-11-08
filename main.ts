@@ -198,7 +198,7 @@ export class TestHistory {
      */
     matchesExpectation(webkitRevision: number): boolean | null {
         const testResult = this.getTestResult(webkitRevision);
-        if (!testResult || testResult.outcome == TestOutcome.NoData) {
+        if (!testResult || testResult.outcome == TestOutcome.NoData || testResult.outcome == TestOutcome.Skip) {
             // This test has not been run in the specified revision
             return null;
         }

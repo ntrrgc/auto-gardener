@@ -226,7 +226,7 @@ export class TestHistory {
             .join("") + "\x1b[0m";
     }
 
-    findFirstFailedRevisionRange(countRevisionsInBuild: number): RevisionRange {
+    findFirstFailedRevisionRange(botTestResults: BotsTestResults): RevisionRange {
         let wasWorkingOnRevision: number | null = null;
         for (let i = this.lastResults.length - 1; i >= 0; i--) {
             const result = this.lastResults[i];
@@ -234,13 +234,19 @@ export class TestHistory {
             if (resultMatchesExpectation == false) {
                 if (wasWorkingOnRevision == null) {
                     // First data we have on the test is already a failure
-                    if (this.lastResults.length >= countRevisionsInBuild) {
+                    if (this.lastResults.length >= botTestResults.webkitRevisions.length) {
                         return "long ago";
                     } else {
-                        // The test is quite recent, it's useful to know its revision
-                        return result.webkitRevision;
+                        // Either the test or the failure is quite recent (we don't get data for tests with a fully
+                        // green past).
+                        // Either way we can assume this test was not failing in the immediately previous revision.
+                        wasWorkingOnRevision = botTestResults.webkitRevisions
+                            .find(rev => rev < result.webkitRevision)!;
                     }
-                } else if (result.webkitRevision - wasWorkingOnRevision == 1) {
+                }
+
+                // We know the range of the failure, report it appropriately.
+                if (result.webkitRevision - wasWorkingOnRevision == 1) {
                     // Failed on this exact revision
                     return result.webkitRevision;
                 } else {
@@ -264,8 +270,8 @@ export class TestHistory {
         }
     }
 
-    constructFirstFailedRevisionMessage(countRevisionsInBuild: number): string | null {
-        const firstFailedRange = this.findFirstFailedRevisionRange(countRevisionsInBuild);
+    constructFirstFailedRevisionMessage(botTestResults: BotsTestResults): string | null {
+        const firstFailedRange = this.findFirstFailedRevisionRange(botTestResults);
         if (typeof firstFailedRange == "string") {
             // Nothing interesting
             return null;
@@ -317,7 +323,6 @@ export class TestHistory {
 
 function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): TestHistory[] {
     const latestRevision = botTestsResults.webkitRevisions[0];
-    const countRevisions = botTestsResults.webkitRevisions.length;
 
     const colorReset = "\x1b[0m";
     const testNameColumnWidth = 131;
@@ -367,7 +372,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
                     testHistory.historyString()}${colorSuffix}`,
                 bgColorCode: colorSuffix
             });
-            const failedRevisionMessage = testHistory.constructFirstFailedRevisionMessage(countRevisions);
+            const failedRevisionMessage = testHistory.constructFirstFailedRevisionMessage(botTestsResults);
             if (failedRevisionMessage) {
                 lines.push({
                     text: `${vtPadLeft("", testNameColumnWidth)}${failedRevisionMessage}`,

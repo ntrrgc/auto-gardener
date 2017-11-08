@@ -355,7 +355,6 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
         let nextLineIsOdd = true; // Use alternating background colors to make lines easier to follow
         let lastTestDirName: string | null = null;
         for (let testHistory of outcomeHistories) {
-            if (testHistory.testPath.toString().indexOf("inspector/") != -1) continue;
             // Add an empty line between test sets from different directories
             if (lastTestDirName != null && testHistory.testPath.dirName() != lastTestDirName) {
                 lines.push({text: "", bgColorCode: "\x1b[48;5;237m"});

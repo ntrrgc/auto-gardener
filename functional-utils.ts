@@ -79,3 +79,11 @@ export function ensure<T>(thing: T, errorIfNull: string = "Unexpected null") {
         return thing;
     }
 }
+
+export function findReverse<T>(list: T[], predicate: (item: T) => boolean): T | undefined {
+    for (let i = list.length - 1; i >= 0; i--) {
+        if (predicate(list[i])) {
+            return list[i];
+        }
+    }
+}

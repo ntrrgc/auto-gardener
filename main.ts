@@ -286,8 +286,8 @@ export class TestHistory {
             return `Failing since ${TestHistory.formatRevisionRangeString(firstFailedRange)}`;
         } else {
             // Flaky, but since when?
-            const firstFailIsOld = this.isRevisionOld(firstKnownFailedRevision);
-            const firstPassAfterwardsIsOld = this.isRevisionOld(firstPassAfterwards);
+            const firstFailIsOld = this.isRevisionOld(botTestResults, firstKnownFailedRevision);
+            const firstPassAfterwardsIsOld = this.isRevisionOld(botTestResults, firstPassAfterwards);
             if (firstFailIsOld && firstPassAfterwardsIsOld) {
                 return `Flaky since long ago`;
             } else {
@@ -298,14 +298,11 @@ export class TestHistory {
 
     /**
      * A revision is considered old if its slot in the test history has a great enough index.
-     * @param {number} revision
      */
-    private isRevisionOld(revision: number) {
-        const index = this.lastResults.findIndex(result => result.webkitRevision == revision);
-        if (index == -1) {
-            throw new Error(`Could not find revision ${revision}`);
-        }
-        return index > 40;
+    private isRevisionOld(botTestResults: BotsTestResults, revision: number) {
+        const cutOffRevision = botTestResults.webkitRevisions[Math.floor(botTestResults.webkitRevisions.length * 0.75)];
+
+        return revision < cutOffRevision;
     }
 
     private findFirstPassingRevisionAfter(firstKnownFailedRevision: number): number | null {
@@ -358,6 +355,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
         let nextLineIsOdd = true; // Use alternating background colors to make lines easier to follow
         let lastTestDirName: string | null = null;
         for (let testHistory of outcomeHistories) {
+            if (testHistory.testPath.toString().indexOf("inspector/") != -1) continue;
             // Add an empty line between test sets from different directories
             if (lastTestDirName != null && testHistory.testPath.dirName() != lastTestDirName) {
                 lines.push({text: "", bgColorCode: "\x1b[48;5;237m"});

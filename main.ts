@@ -264,9 +264,9 @@ export class TestHistory {
         if (typeof revisionRange == "string") {
             return revisionRange;
         } else if (typeof revisionRange == "number") {
-            return revisionRange.toString();
+            return `r${revisionRange}`;
         } else {
-            return `${revisionRange.start}-${revisionRange.end}`;
+            return `r${revisionRange.start}-${revisionRange.end}`;
         }
     }
 
@@ -291,7 +291,7 @@ export class TestHistory {
             if (firstFailIsOld && firstPassAfterwardsIsOld) {
                 return `Flaky since long ago`;
             } else {
-                return `Flaky since at least ${firstKnownFailedRevision}`;
+                return `Flaky since at least r${firstKnownFailedRevision}`;
             }
         }
     }

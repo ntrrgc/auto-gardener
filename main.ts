@@ -291,7 +291,7 @@ export class TestHistory {
             if (firstFailIsOld && firstPassAfterwardsIsOld) {
                 return `Flaky since long ago`;
             } else {
-                return `Flaky since at least r${firstKnownFailedRevision}`;
+                return `Flaky since r${firstKnownFailedRevision} or earlier`;
             }
         }
     }

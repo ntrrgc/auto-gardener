@@ -79,7 +79,7 @@ export enum ToStringMode {
 export class TestExpectation {
     constructor(
         public lineNo: number,
-        public testPath: Path,
+        public testPath: Path, /* may be a single test or a folder with tests */
         public bugIds: number[],
         public expectedOutcomes: Set<TestOutcome>,
         public buildTypeConstraint: BuildType | null = null)
@@ -95,7 +95,7 @@ export class TestExpectation {
             this.expectedOutcomes.has(TestOutcome.Skip);
     }
 
-    toString(flags: ToStringMode, currentBgColor: string): string {
+    toString(flags: ToStringMode, testPath: Path, currentBgColor: string): string {
         const bugLinkWidth = 19;
         const parts = new Array<string>();
 
@@ -116,7 +116,9 @@ export class TestExpectation {
         if (this.buildTypeConstraint != null) {
             parts.push(`[ ${BuildType[this.buildTypeConstraint]} ]`);
         }
-        parts.push(this.testPath.toString())
+        /* Note: The caller must specify the path of the specific test, as the same TestExpectation may cover several
+         * tests. */
+        parts.push(testPath.toString())
 
         const outcomes = `[ ${Array.from(this.expectedOutcomes.values())
             .map(outcome => flags & ToStringMode.WithColors
@@ -365,7 +367,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
             const colorSuffix = nextLineIsOdd ? colorOdd : colorEven;
             lines.push({
                 text: `${vtPadLeft(testHistory.getExpectationWithDefault().toString(
-                    ToStringMode.WithColors | ToStringMode.PadBugLink, colorSuffix), testNameColumnWidth)}${
+                    ToStringMode.WithColors | ToStringMode.PadBugLink, testHistory.testPath, colorSuffix), testNameColumnWidth)}${
                     testHistory.historyString()}${colorSuffix}`,
                 bgColorCode: colorSuffix
             });

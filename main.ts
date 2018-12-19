@@ -336,7 +336,7 @@ function findTestsWithInvalidExpectations(botTestsResults: BotsTestResults): Tes
 
     const lines = new Array<VtLine>();
 
-    console.log(`\x1b[1;4mGardening report for r${latestRevision} (${botTestsResults.buildNumbers[0]}), ${botTestsResults.context.botsPlatformName}\x1b[21;24m`);
+    console.log(`\x1b[1;4mGardening report for ${botTestsResults.context.botsPlatformName}/r${latestRevision} (${botTestsResults.buildNumbers[0]})\x1b[21;24m`);
 
     for (let [outcome, outcomeHistories] of sortedBy(testHistoryByOutcome.entries(), ([outcome, _]) => [outcome])) {
         if (outcome == TestOutcome.NoData) {

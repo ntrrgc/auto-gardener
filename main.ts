@@ -269,7 +269,7 @@ export class TestHistory {
         } else if (typeof revisionRange == "number") {
             return `r${revisionRange}`;
         } else {
-            return `r${revisionRange.start}-${revisionRange.end}`;
+            return `r${revisionRange.start}:r${revisionRange.end}`;
         }
     }
 

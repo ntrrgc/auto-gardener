@@ -157,6 +157,7 @@ export function constructBotTestsResultsFromJson(context: TestContext,
 
     return {
         webkitRevisions: webkitRevisions,
+        buildNumbers: jsonResultsPlatform.buildNumbers.map(x => parseInt(x)),
         context: context,
         testHistories: collectedTestHistories,
     };

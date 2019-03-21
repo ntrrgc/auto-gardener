@@ -2,10 +2,10 @@
 cd "$(dirname "$0")"
 
 mkdir -p results
-wget -O results/gtk-debug.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Debug%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
-wget -O results/gtk-release.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Release%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
-wget -O results/gtk-release-wayland.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Release Wayland%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
-wget -O results/wpe-release.json "https://webkit-test-results.webkit.org/testfile?builder=WPE%20Linux%2064-bit%20Release%20(Tests)&master=webkit.org&testtype=layout-tests&name=results-small.json"
+wget -O results/gtk-debug.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Debug%20(Tests)&master=webkit.org&testtype=layout-tests&name=results.json"
+wget -O results/gtk-release.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Release%20(Tests)&master=webkit.org&testtype=layout-tests&name=results.json"
+wget -O results/gtk-release-wayland.json "https://webkit-test-results.webkit.org/testfile?builder=GTK%20Linux%2064-bit%20Release Wayland%20(Tests)&master=webkit.org&testtype=layout-tests&name=results.json"
+wget -O results/wpe-release.json "https://webkit-test-results.webkit.org/testfile?builder=WPE%20Linux%2064-bit%20Release%20(Tests)&master=webkit.org&testtype=layout-tests&name=results.json"
 
 mkdir -p expectations/platform/{wk2,gtk,gtk-wayland,wpe}
 for path in TestExpectations platform/{wk2,gtk,gtk-wayland,wpe}/TestExpectations; do

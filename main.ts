@@ -206,8 +206,8 @@ export class TestHistory {
             return null;
         }
 
-        if (!this.expectation) {
-            // This test does not appear in TestExpectations, it should pass
+        if (!this.expectation || (this.expectation.expectedOutcomes.size == 1 && this.expectation.expectedOutcomes.has(TestOutcome.Slow))) {
+            // This test does not appear in TestExpectations, or it's only marked as [ Slow ], it should pass
             return testResult.outcome == TestOutcome.Pass;
         } else {
             // The test should match the expectation
